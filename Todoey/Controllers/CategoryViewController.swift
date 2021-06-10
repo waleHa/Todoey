@@ -2,8 +2,7 @@
 //  CategoryViewController.swift
 //  Todoey
 //
-//  Created by admin on 2021-06-09.
-//  Copyright © 2021 App Brewery. All rights reserved.
+//  Created by © Alwaleed Hamam
 //
 
 import UIKit
