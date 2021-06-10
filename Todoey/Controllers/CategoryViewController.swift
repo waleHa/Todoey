@@ -8,18 +8,34 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
 class CategoryViewController: UITableViewController {
-
+    
     var categoryArray = [Category]()
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-
+    var hexString = "FFFFFF"
     
     override func viewDidLoad() {
         super.viewDidLoad()
-                loadCategory()
+        loadCategory()
+        tableView.separatorStyle = .none
+        
     }
+    override func viewWillAppear(_ animated: Bool) {
+         guard let navBar = navigationController?.navigationBar else {fatalError("navigationController doesn't exist")}
+        let uiColor = UIColor(hexString: hexString)
+        let contrastColor = ContrastColorOf(uiColor!, returnFlat: true)
+        navBar.barTintColor = uiColor
+        navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor:contrastColor]
+        navBar.tintColor = contrastColor
+        navBar.barTintColor = uiColor
 
+        tableView.reloadData()
+        
+        
+    }
+    
     //MARK:- add buttton
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         //4
@@ -32,6 +48,7 @@ class CategoryViewController: UITableViewController {
             let newCategory = Category(context: self.context)
             if xTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines) != ""{
                 newCategory.name = xTextField.text!
+                newCategory.color = UIColor.randomFlat().hexValue()
                 self.categoryArray.append(newCategory)
                 self.saveCategory()
             }
@@ -50,26 +67,26 @@ class CategoryViewController: UITableViewController {
     
     
     //MARK:- Data Manipulation - Save/load data
-        func saveCategory(){
-            do{
-                try context.save()
-            }catch{
-                print("Error saving context: \(error.localizedDescription)")
-            }
-            tableView.reloadData()
+    func saveCategory(){
+        do{
+            try context.save()
+        }catch{
+            print("Error saving context: \(error.localizedDescription)")
         }
-        
-        func loadCategory(with request:NSFetchRequest<Category> = Category.fetchRequest()){
-            do{ // context.fetch() will return NSFetchRequestResult => NSFetchRequest<Category>
-                categoryArray = try context.fetch(request)
-            }catch{
-                print("Error fetching data: \(error)")
-            }
-            tableView.reloadData()
+        tableView.reloadData()
+    }
+    
+    func loadCategory(with request:NSFetchRequest<Category> = Category.fetchRequest()){
+        do{ // context.fetch() will return NSFetchRequestResult => NSFetchRequest<Category>
+            categoryArray = try context.fetch(request)
+        }catch{
+            print("Error fetching data: \(error)")
         }
+        tableView.reloadData()
+    }
 }
 
-    //MARK:- TableView DataSource
+//MARK:- TableView DataSource
 //MARK:- TableView
 extension CategoryViewController{
     override func tableView(_ tableview:UITableView, numberOfRowsInSection section:Int)->Int{
@@ -77,20 +94,32 @@ extension CategoryViewController{
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoCategoryCell", for: indexPath)
-        let category = categoryArray[indexPath.row]
-        cell.textLabel?.text = category.name
-                
+        cell.textLabel?.text = categoryArray[indexPath.row].name
+       
+        guard let navBar = navigationController?.navigationBar else {fatalError("navigationController doesn't exist")}
+        if let color = categoryArray[indexPath.row].color{
+            let contrastColor = ContrastColorOf(UIColor(hexString: color)!, returnFlat: true)
+            cell.backgroundColor = UIColor(hexString: color)
+            cell.textLabel?.textColor = contrastColor
+            if indexPath.row == 0 {
+                hexString = color
+                navigationController?.navigationBar.barTintColor = UIColor(hexString: color)
+                navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor:contrastColor]
+                navBar.tintColor = contrastColor
+            }
+        }
+        
         return cell
     }
-
+    
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-    if editingStyle == .delete{
-        
-        context.delete(categoryArray[indexPath.row])
-        
-        self.categoryArray.remove(at: indexPath.row)
-
-        self.saveCategory()
+        if editingStyle == .delete{
+            
+            context.delete(categoryArray[indexPath.row])
+            
+            self.categoryArray.remove(at: indexPath.row)
+            
+            self.saveCategory()
         }
     }
     //MARK:- TableView Delegate
@@ -102,12 +131,9 @@ extension CategoryViewController{
             let destinationVC = segue.destination as! TodoListViewController
             if let indexPath = tableView.indexPathForSelectedRow{
                 destinationVC.selectedCategory = categoryArray[indexPath.row]
+                destinationVC.pushedColor = UIColor(hexString: categoryArray[indexPath.row].color!)
+                
             }
         }
     }
 }
-
-    
-
-    
-

@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
 class TodoListViewController: UITableViewController{
     
@@ -18,15 +19,32 @@ class TodoListViewController: UITableViewController{
             loadItems();
         }
     }
+    var pushedColor: UIColor!
+    
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     
     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-//        loadItems()
+        //        loadItems()
+        tableView.separatorStyle = .none
     }
-    
+    override func viewWillAppear(_ animated: Bool) {
+        guard let navBar = navigationController?.navigationBar else {fatalError("navigationController doesn't exist")}
+        if let colorHex = selectedCategory?.color{
+            let uiColor = UIColor(hexString: colorHex)
+            let contrastColor = ContrastColorOf(uiColor!, returnFlat: true)
+            title = selectedCategory!.name
+            searchBar.barTintColor = uiColor
+            searchBar.searchTextField.backgroundColor = FlatWhite()//color?.lighten(byPercentage: 0.1)
+            navBar.barTintColor = uiColor
+            navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor:contrastColor]
+            navBar.tintColor = contrastColor
+    }
+    }
     //MARK:- add new item
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var xTextField = UITextField()
@@ -39,6 +57,8 @@ class TodoListViewController: UITableViewController{
             if xTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines) != ""{
                 newItem.title = xTextField.text!
                 newItem.done = false
+                //                newItem.color = UIColor.randomFlat().hexValue()
+                
                 newItem.parentCategory = self.selectedCategory!
                 self.itemArray.append(newItem)
                 self.saveItems()
@@ -65,7 +85,7 @@ class TodoListViewController: UITableViewController{
     func loadItems(with request:NSFetchRequest<Item> = Item.fetchRequest()){
         let predicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
         if request.predicate == nil{
-        request.predicate = predicate
+            request.predicate = predicate
         }
         do{ // context.fetch() will return NSFetchRequestResult => NSFetchRequest<Item>
             itemArray = try context.fetch(request)
@@ -81,14 +101,14 @@ class TodoListViewController: UITableViewController{
 extension TodoListViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         let request : NSFetchRequest<Item> = Item.fetchRequest()
-
+        
         if searchBar.text?.trimmingCharacters(in: .whitespacesAndNewlines) == ""{
         }
         else{
             let predicate1 = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
             let predicate2 = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
             request.predicate =   NSCompoundPredicate(andPredicateWithSubpredicates: [predicate1,predicate2] )//add the query to the request
-                
+            
             request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
         }
         loadItems(with: request)
@@ -113,7 +133,11 @@ extension TodoListViewController{
         cell.textLabel?.text = item.title
         
         cell.accessoryType = item.done ? .checkmark : .none
-        
+        let percentage = CGFloat(indexPath.row) / CGFloat(itemArray.count)
+        if let color = pushedColor?.darken(byPercentage: percentage){
+            cell.backgroundColor = color
+            cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        }
         return cell
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -122,13 +146,13 @@ extension TodoListViewController{
         tableView.deselectRow(at: indexPath, animated: true)
     }
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-    if editingStyle == .delete{
-        
-        context.delete(itemArray[indexPath.row])
-        
-        self.itemArray.remove(at: indexPath.row)
-
-        self.saveItems()
+        if editingStyle == .delete{
+            
+            context.delete(itemArray[indexPath.row])
+            
+            self.itemArray.remove(at: indexPath.row)
+            
+            self.saveItems()
         }
     }
 }
