@@ -1,7 +1,7 @@
 
 # Todoey ✓
 
-## My Goal
+## My Goal:
 
 The objective of this application is to create todo-list app to keep track of all your tasks.
 
